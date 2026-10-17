@@ -72,3 +72,7 @@ After rendering passes:
 - https://developers.openai.com/plugins/build/app-quickstart
 - https://vercel.com/docs/mcp/deploy-mcp-servers-to-vercel
 - https://github.com/vercel-labs/mcp-handler
+
+### Job creation and archive
+
+Version 0.4 adds **+ New job**, a default **Current jobs** view, and reversible archiving after all subtasks are completed. Creation, archive and restore use the same explicit approval, revision checks and request deduplication as stage changes. Archived jobs keep their records and can be restored. See `BOARD_SETUP.md` for the required `003_job_lifecycle.sql` upgrade; existing boards must not be reimported.
