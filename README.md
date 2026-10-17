@@ -1,5 +1,7 @@
 # Production HQ
 
+The authenticated app now includes a production board with expandable jobs, preserved stage IDs, calculated progress, material requirements, partial/blocked stage statuses and approved subtask additions. See [BOARD_SETUP.md](BOARD_SETUP.md) for activation and private import instructions. Customer data is never included in this repository. This is an imported-copy workflow; updates are saved in Supabase and do not automatically sync to Google Sheets.
+
 Independent GitHub + Vercel rendering test for the future job dashboard.
 
 The private login and permanent-saving checkpoint is implemented separately. See [SECURE_SETUP.md](SECURE_SETUP.md) to configure Supabase and the new authenticated connection. `/api/mcp` remains the public rendering sample; `/api/secure-mcp` is the protected saving test. Without configuration the private routes fail closed and the login page explains setup is pending.
