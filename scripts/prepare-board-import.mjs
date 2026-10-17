@@ -12,7 +12,8 @@ for(const material of doc.materials)assert.ok(ids.has(material.jobId),'Material 
 const payload=JSON.stringify(doc),tag='$phq_'+randomUUID().replaceAll('-','')+'$';assert.ok(!payload.includes(tag));
 const sqlString=value=>"'"+value.replaceAll("'","''")+"'";
 const migration=await readFile(new URL('../supabase/002_production_board.sql',import.meta.url),'utf8');
-const setup=migration.replace('begin;\n','').replace(/commit;\s*$/,'');
+const lifecycle=await readFile(new URL('../supabase/003_job_lifecycle.sql',import.meta.url),'utf8');
+const setup=[migration,lifecycle].map(sql=>sql.replace('begin;\n','').replace(/commit;\s*$/,'')).join('\n');
 const sql=`-- Private Production HQ import. Contains customer information: do not commit or publish.
 -- Creates the board schema and imports an approved snapshot for one existing account.
 begin;
