@@ -28,14 +28,14 @@ const handler = createMcpHandler(server => {
     description: 'Open the interactive sample job card. This is a rendering test with no real jobs or permanent storage.',
     inputSchema: z.object({}), outputSchema,
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-    _meta: { ui: { resourceUri: RESOURCE_URI }, 'openai/outputTemplate': RESOURCE_URI },
+    _meta: { ui: { resourceUri: RESOURCE_URI, visibility: ['model', 'app'] }, 'openai/outputTemplate': RESOURCE_URI, 'openai/widgetAccessible': true },
   }, async () => result());
   server.registerTool('preview_test_completion', {
     title: 'Test checkbox connection',
     description: 'Echo a sample checkbox value back to the card to verify UI-to-server communication. Does not save anything.',
     inputSchema: z.object({ complete: z.boolean() }), outputSchema,
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-    _meta: { ui: { resourceUri: RESOURCE_URI }, 'openai/widgetAccessible': true },
+    _meta: { ui: { resourceUri: RESOURCE_URI, visibility: ['model', 'app'] }, 'openai/widgetAccessible': true },
   }, async ({ complete }) => result(complete));
 }, { serverInfo: { name: 'production-hq-rendering-test', version: '0.1.0' } });
 

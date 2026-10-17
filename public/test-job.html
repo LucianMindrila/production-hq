@@ -1,13 +1,16 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Production HQ sample job</title>
 <style>
 *{box-sizing:border-box}body{margin:0;padding:12px;background:transparent;color:#19312c;font:15px Arial,sans-serif}article{max-width:760px;margin:auto;background:#fff;border:1px solid #dae3db;border-radius:16px;padding:24px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px}.tag{font-size:11px;letter-spacing:.08em;color:#657b6c}.badge{font-size:11px;background:#fff3ce;padding:6px 10px;border-radius:20px;color:#72591e}h2{font-size:24px;margin:14px 0 6px}p{color:#607369;font-size:13px;line-height:1.5}label{display:flex;align-items:center;gap:12px;padding:18px 0;font-weight:600}input{width:24px;height:24px;accent-color:#206647;flex-shrink:0}button{background:#205a40;border:0;border-radius:8px;color:#fff;padding:12px 18px;font-weight:600;cursor:pointer}button:disabled{opacity:.5;cursor:wait}#status{min-height:36px;margin-bottom:0}input:focus-visible,button:focus-visible{outline:3px solid #bd9539;outline-offset:4px}
-</style></head><body><article><div class="top"><span class="tag">DEMO-001 · PRODUCTION HQ</span><span class="badge">Sample data</span></div><h2>Connection check</h2><p>This card tests clicking and communication with the server.</p><label><input id="complete" type="checkbox">Confirm the interactive checkbox works</label><button id="test" disabled>Test connection</button><p id="status" role="status" aria-live="polite">Connecting…</p><p>Preview only · Changes are not permanently saved</p></article>
+</style></head><body><article><div class="top"><span class="tag">DEMO-001 · PRODUCTION HQ</span><span class="badge">Sample data</span></div><h2>Connection check</h2><p>This card tests clicking and communication with the server.</p><label><input id="complete" type="checkbox">Confirm the interactive checkbox works</label><button id="test">Test connection</button><p id="connection" role="status" aria-live="polite">Connecting to ChatGPT…</p><p id="status" role="status" aria-live="polite">Tick the checkbox, then test the connection.</p><p>Preview only · Changes are not permanently saved</p></article>
 <script>
 (() => {
   const checkbox = document.getElementById('complete');
   const button = document.getElementById('test');
   const status = document.getElementById('status');
+  const connection = document.getElementById('connection');
   const pending = new Map();
+  let ready;
+  const compatibilityBridge = () => typeof window.openai?.callTool === 'function';
   let id = 0;
   let busy = false;
   let website = window.parent === window;
@@ -15,7 +18,7 @@
   const tell = (method, params) => window.parent.postMessage({jsonrpc:'2.0', method, params}, '*');
   const rpc = (method, params) => new Promise((resolve, reject) => {
     const requestId = ++id;
-    const timer = setTimeout(() => { pending.delete(requestId); reject(new Error('ChatGPT did not respond. Try reopening the card.')); }, 15000);
+    const timer = setTimeout(() => { pending.delete(requestId); reject(new Error('ChatGPT did not respond to ' + method + '. Reopen the card after refreshing the app connection.')); }, 8000);
     pending.set(requestId, {resolve, reject, timer});
     window.parent.postMessage({jsonrpc:'2.0', id:requestId, method, params}, '*');
   });
@@ -48,7 +51,13 @@
     return payload.result;
   }
   async function call(name, args) {
-    const result = website ? await websiteCall(name, args) : await rpc('tools/call', {name,arguments:args});
+    let result;
+    if (website) result = await websiteCall(name, args);
+    else if (compatibilityBridge()) result = await window.openai.callTool(name, args);
+    else {
+      await ready;
+      result = await rpc('tools/call', {name,arguments:args});
+    }
     if (result?.isError) throw new Error(result.content?.find(c=>c.type==='text')?.text || 'Tool returned an error');
     if (typeof result?.structuredContent?.complete !== 'boolean') throw new Error('Server returned no checkbox value');
     return result;
@@ -61,21 +70,26 @@
       const result = await call('preview_test_completion', {complete:checkbox.checked});
       render(result);
       status.textContent = 'Connection works. Server received: ' + (checkbox.checked ? 'complete' : 'incomplete') + '. Preview only; nothing was saved.';
-    } catch (error) { status.textContent = error.message; }
+    } catch (error) { status.textContent = 'Connection test failed: ' + error.message; }
     finally { busy = false; button.disabled = false; checkbox.disabled = false; }
   });
   async function init() {
-    try {
-      if (!website) {
-        await rpc('ui/initialize', {appInfo:{name:'production-hq-rendering-test',version:'0.1.0'},appCapabilities:{},protocolVersion:'2026-01-26'});
-        tell('ui/notifications/initialized', {});
-        new ResizeObserver(() => tell('ui/notifications/size-changed', {height:document.documentElement.scrollHeight})).observe(document.body);
-      }
+    if (website) {
       render(await call('show_rendering_test_job', {}));
-      status.textContent = 'Ready. Tick the checkbox, then test the connection.';
-      button.disabled = false;
-    } catch(error) { status.textContent = error.message; }
+      connection.textContent = 'Website test ready.';
+      return;
+    }
+    if (compatibilityBridge()) {
+      render({structuredContent:window.openai.toolOutput});
+      connection.textContent = 'ChatGPT connection ready.';
+      return;
+    }
+    await rpc('ui/initialize', {appInfo:{name:'production-hq-rendering-test',version:'0.1.1'},appCapabilities:{},protocolVersion:'2026-01-26'});
+    tell('ui/notifications/initialized', {});
+    new ResizeObserver(() => tell('ui/notifications/size-changed', {height:document.documentElement.scrollHeight})).observe(document.body);
+    connection.textContent = 'ChatGPT connection ready.';
   }
-  init();
+  ready = init();
+  ready.catch(error => { connection.textContent = 'Connection setup failed: ' + error.message; });
 })();
 </script></body></html>
