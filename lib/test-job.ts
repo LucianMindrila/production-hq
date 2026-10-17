@@ -1,4 +1,4 @@
-export const RESOURCE_URI = 'ui://production-hq/rendering-test-v2.html';
+export const RESOURCE_URI = 'ui://production-hq/rendering-test-v3.html';
 export const RESOURCE_MIME_TYPE = 'text/html;profile=mcp-app';
 export function previewJob(complete = false) {
   return {

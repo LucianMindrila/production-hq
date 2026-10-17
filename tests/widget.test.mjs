@@ -15,7 +15,10 @@ function mount(mode) {
   let onMessage;
   const result = complete => ({structuredContent:{complete,persisted:false}});
   const parent = {
-    get location() { throw new Error('cross origin'); },
+    get location() {
+      if (mode === 'same-origin-wrapper') return {origin:'https://sandbox.example'};
+      throw new Error('cross origin');
+    },
     postMessage(message) {
       calls.push(message);
       if (!message.id) return;
@@ -25,19 +28,25 @@ function mount(mode) {
       }}));
     },
   };
-  const window = {parent, location:{origin:'https://sandbox.example'},
+  const window = {parent, location:{origin:'https://sandbox.example',pathname:'/widget/card',search:''},
     addEventListener(name, callback) { if(name === 'message') onMessage=callback; },
   };
+  if (mode === 'website') window.location = {pathname:'/test-job.html',search:'?surface=website'};
   if (mode === 'compatibility') window.openai = {
     toolOutput:{complete:false,persisted:false},
     async callTool(name,args) { calls.push({name,args});return result(args.complete); },
   };
   vm.runInNewContext(script, {window, document:{getElementById:id=>elements[id],body:{},documentElement:{scrollHeight:350}},
-    setTimeout, clearTimeout, ResizeObserver:class {observe() {}}});
+    fetch:async (url, options) => {
+      assert.equal(mode,'website','embedded cards must not use direct HTTP');
+      const request=JSON.parse(options.body);calls.push({url,request});
+      return {ok:true,headers:{get:()=> 'application/json'},text:async()=>JSON.stringify({result:result(request.params.arguments.complete ?? false)})};
+    },
+    URLSearchParams, setTimeout, clearTimeout, ResizeObserver:class {observe() {}}});
   return {elements,calls};
 }
 
-for (const mode of ['standard','compatibility']) test(`${mode} bridge lets the checkbox button complete a server round trip`, async () => {
+for (const mode of ['standard','compatibility','same-origin-wrapper']) test(`${mode} bridge lets the checkbox button complete a server round trip`, async () => {
   const {elements:e,calls} = mount(mode);
   await settle();
   assert.equal(e.test.disabled,false);
@@ -51,6 +60,16 @@ for (const mode of ['standard','compatibility']) test(`${mode} bridge lets the c
     assert.equal(e.complete.checked,complete);
     assert.equal(e.test.disabled,false);
   }
+});
+
+test('explicit website mode uses its own MCP endpoint', async () => {
+  const {elements:e,calls}=mount('website');
+  await settle();
+  assert.equal(e.connection.textContent,'Website test ready.');
+  e.complete.checked=true;
+  await e.test.events.click();
+  assert.match(e.status.textContent,/Server received: complete/);
+  assert.ok(calls.every(c=>c.url==='/api/mcp'));
 });
 
 test('startup errors remain visible after checkbox changes and button clicks', async () => {
