@@ -18,7 +18,7 @@ async function handle(request:Request) {
   const client=tokenClient(token!);
   // One handler per request: the user's credentials are never shared across requests.
   const handler=createMcpHandler(server=>{
-    const BOARD_URI='ui://production-hq/production-board-v2.html';
+    const BOARD_URI='ui://production-hq/production-board-v3.html';
     server.registerResource('production-board',BOARD_URI,{title:'Production HQ job board',mimeType:'text/html;profile=mcp-app'},async()=>({contents:[{uri:BOARD_URI,mimeType:'text/html;profile=mcp-app',text:await readFile(path.join(process.cwd(),'public/production-board.html'),'utf8'),_meta:{ui:{prefersBorder:true,csp:{connectDomains:[],resourceDomains:[]}}}}]}));
     server.registerResource('saved-test-card',URI,{title:'Private saved test job',mimeType:'text/html;profile=mcp-app'},async()=>({contents:[{
       uri:URI,mimeType:'text/html;profile=mcp-app',text:await readFile(path.join(process.cwd(),'public/saved-test.html'),'utf8'),
