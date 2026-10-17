@@ -11,6 +11,7 @@ export default function Home() {
       <li>In a chat with the app enabled, ask <strong>“Show the Production HQ rendering test job.”</strong></li>
       <li>Tick the checkbox, then choose <strong>Test connection</strong>. Look for confirmation that the server received the change.</li>
     </ol><p>If the card cannot open, capture the error and inspect Vercel logs. Website rendering alone does not prove that the ChatGPT card works.</p></section>
-    <footer>Sample data only · No permanent saving · No Google Sheets connection · No login configured</footer>
+    <section style={{marginTop:24}}><h2>Private saving test</h2><p>The next checkpoint adds sign-in, permanent saves and revision history.</p><a href="/dashboard">Open private test</a></section>
+    <footer>Public rendering sample above · Google Sheets is not connected</footer>
   </main>;
 }

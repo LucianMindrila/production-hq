@@ -2,6 +2,8 @@
 
 Independent GitHub + Vercel rendering test for the future job dashboard.
 
+The private login and permanent-saving checkpoint is implemented separately. See [SECURE_SETUP.md](SECURE_SETUP.md) to configure Supabase and the new authenticated connection. `/api/mcp` remains the public rendering sample; `/api/secure-mcp` is the protected saving test. Without configuration the private routes fail closed and the login page explains setup is pending.
+
 ## What this checkpoint does
 
 - Serves a clickable sample job on the website.
@@ -9,7 +11,7 @@ Independent GitHub + Vercel rendering test for the future job dashboard.
 - Registers an HTML resource with `text/html;profile=mcp-app` and links it to the show tool.
 - Sends a checkbox value from the card to a tool and displays the server's response.
 
-**This is a rendering/communication test, not the production task manager.** No authentication, database, Google Sheets access, employee information or actual customer jobs are included. Checkbox changes are previews and reset when the card reopens. There are no shared mutable records. Do not enter real job information in this version.
+**The public sample is a rendering/communication test.** It has no authentication or database access. Its checkbox changes are previews and reset when the card reopens; there are no shared mutable records. The separate private test requires Supabase setup and keeps approved changes in a database. Neither test imports Google Sheets, employee information or real customer jobs.
 
 ## Run
 
@@ -53,12 +55,12 @@ The test passes only when all of these happen **inside ChatGPT**:
 
 If it fails, inspect Vercel logs for `resources/read` and `tools/call`; capture the ChatGPT error and HTTP response. A working website or text response is not a passing card test. Do not repeatedly rename template URIs without new evidence.
 
-## Subsequent checkpoints
+## Remaining checkpoints
 
 After rendering passes:
 
-1. Add a real OAuth authorization provider, register the ChatGPT client, verify issuer/audience/expiry/scopes, and isolate each user's records. Vercel hosting does not supply OAuth automatically.
-2. Add durable server-side storage and history; test save, reopen, duplicate requests and stale revisions. Never use process memory or Vercel's local filesystem as durable job storage.
+1. Activate the implemented Supabase login, OAuth connection and database using SECURE_SETUP.md; verify live sign-in and account isolation. Vercel hosting does not supply the OAuth provider automatically.
+2. Complete the hosted save/reopen acceptance checks. Database and token tests run locally, but hosted configuration and end-to-end OAuth must be tested after setup.
 3. Add job creation, nested tasks, workers, partial completion and proposed edits with explicit approval before saving.
 4. Connect the approved Google Sheets source using separately configured server credentials; preserve existing IDs, append history and verify readback.
 5. Verify dictated requests through ChatGPT and visual edits use the same records.

@@ -1,0 +1,69 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Production HQ private test</title>
+<style>*{box-sizing:border-box}body{margin:0;padding:10px;color:#19312c;font:15px Arial,sans-serif;background:transparent}article{max-width:760px;margin:auto;background:white;border:1px solid #d9e3da;border-radius:16px;padding:24px}.tag{font-size:11px;letter-spacing:.05em;color:#617267}h2{font-size:24px;margin-bottom:6px}p{line-height:1.5;font-size:13px;color:#5b7062}label{display:flex;gap:12px;align-items:center;font-weight:600;margin:24px 0}input{width:24px;height:24px;accent-color:#205a40}button{border:0;border-radius:8px;background:#205a40;color:white;padding:12px 16px;cursor:pointer;font-weight:600;margin:0 8px 8px 0}button.secondary{background:#edf1eb;color:#304e3e}button:disabled{opacity:.45;cursor:default}#proposal{padding:12px;background:#fff4cd;color:#66531e;border-radius:8px}input:focus-visible,button:focus-visible{outline:3px solid #b58d3b;outline-offset:3px}</style></head>
+<body><article><div class="tag">TEST-001 · PRIVATE SAVE TEST · BUILD 0.2.0</div><h2>Keep my checkbox saved.</h2><p id="revision">Loading your saved state…</p><label><input id="complete" type="checkbox" disabled>Confirm my checkbox stays saved</label><p id="proposal" hidden></p><button id="save" disabled>Approve &amp; save</button><button id="reload" class="secondary">Reload saved state</button><p id="connection" role="status" aria-live="polite">Connecting…</p><p id="status" role="status" aria-live="polite">Sign-in is required. Changes need your approval before saving.</p><p>Private test database · Google Sheets is not connected</p></article>
+<script>
+(() => {
+  const el=Object.fromEntries(['complete','save','reload','revision','proposal','connection','status'].map(id=>[id,document.getElementById(id)]));
+  const website=window.location.pathname==='/saved-test.html' && new URLSearchParams(window.location.search).get('surface')==='website';
+  const compatibility=()=>typeof window.openai?.callTool==='function';
+  const pending=new Map();let id=0,ready,busy=false,snapshot=null,operation=null;
+  const tell=(method,params)=>parent.postMessage({jsonrpc:'2.0',method,params},'*');
+  const rpc=(method,params)=>new Promise((resolve,reject)=>{
+    const requestId=++id;const timer=setTimeout(()=>{pending.delete(requestId);reject(new Error('ChatGPT did not respond. Reopen this card and try again.'));},15000);
+    pending.set(requestId,{resolve,reject,timer});parent.postMessage({jsonrpc:'2.0',id:requestId,method,params},'*');
+  });
+  function buttons() {
+    const dirty=!!snapshot && el.complete.checked!==snapshot.complete;
+    el.complete.disabled=busy || !snapshot;el.save.disabled=busy || !dirty;el.reload.disabled=busy;
+    el.proposal.hidden=!dirty;
+    if(dirty) el.proposal.textContent='Proposed change: '+(snapshot.complete?'complete':'incomplete')+' → '+(el.complete.checked?'complete':'incomplete')+'. Approve & save to make it permanent.';
+  }
+  function render(result) {
+    const data=result?.structuredContent;
+    if(data?.jobId!=='TEST-001' || typeof data.complete!=='boolean' || !Number.isInteger(data.revision)) throw new Error('The server returned no valid saved state.');
+    snapshot=data;operation=null;el.complete.checked=data.complete;
+    el.revision.textContent=data.persisted ? 'Saved revision '+data.revision+' · '+(data.updatedAt || '') : 'No changes saved yet · revision 0';
+    buttons();
+  }
+  window.addEventListener('message',event=>{
+    if(event.source!==parent || !event.data || typeof event.data!=='object') return;
+    const message=event.data;
+    if(pending.has(message.id)) {const p=pending.get(message.id);pending.delete(message.id);clearTimeout(p.timer);message.error?p.reject(new Error(message.error.message || 'Host request failed')):p.resolve(message.result);}
+    if(message.method==='ui/notifications/tool-result' && !busy && !snapshot && message.params?.structuredContent?.jobId==='TEST-001') render(message.params);
+  });
+  async function call(name,args) {
+    let result;
+    if(website) {
+      const response=await fetch('/api/private/test-state',name==='save_test_completion'?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(args),cache:'no-store'}:{cache:'no-store'});
+      const data=await response.json();if(!response.ok) throw new Error(data.error || 'Request failed');result={structuredContent:data};
+    } else if(compatibility()) result=await window.openai.callTool(name,args);
+    else {await ready;result=await rpc('tools/call',{name,arguments:args});}
+    if(result?.isError) throw new Error(result.content?.find(c=>c.type==='text')?.text || 'Server request failed');
+    return result;
+  }
+  async function load() {
+    busy=true;buttons();el.status.textContent='Reading the saved state…';
+    try {render(await call('get_saved_test_job',{}));el.status.textContent='Latest saved state loaded.';}
+    catch(error){el.status.textContent=error.message;}
+    finally {busy=false;buttons();}
+  }
+  el.complete.addEventListener('change',()=>{operation=null;buttons();el.status.textContent='Change staged. Nothing has been saved yet.';});
+  el.reload.addEventListener('click',load);
+  el.save.addEventListener('click',async()=>{
+    if(!snapshot || busy || el.complete.checked===snapshot.complete) return;
+    operation ||= {complete:el.complete.checked,expectedRevision:snapshot.revision,requestId:crypto.randomUUID(),approved:true};
+    busy=true;buttons();el.status.textContent='Saving your approved change and verifying it…';
+    try {render(await call('save_test_completion',operation));el.status.textContent='Saved and verified at revision '+snapshot.revision+'. Reopen the card to check it stays saved.';}
+    catch(error){el.status.textContent=error.message;}
+    finally {busy=false;buttons();}
+  });
+  async function init() {
+    if(website) {el.connection.textContent='Private website connection ready.';return;}
+    if(compatibility()) {el.connection.textContent='ChatGPT connection ready.';return;}
+    await rpc('ui/initialize',{appInfo:{name:'production-hq-private-test',version:'0.2.0'},appCapabilities:{},protocolVersion:'2026-01-26'});
+    tell('ui/notifications/initialized',{});new ResizeObserver(()=>tell('ui/notifications/size-changed',{height:document.documentElement.scrollHeight})).observe(document.body);
+    el.connection.textContent='ChatGPT connection ready.';
+  }
+  ready=init();ready.then(load).catch(error=>{el.connection.textContent='Connection setup failed: '+error.message;});
+})();
+</script></body></html>

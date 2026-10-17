@@ -52,6 +52,12 @@ test('production server publishes the real card and echoes both checkbox values'
     assert.equal(invalid.isError, true);
     const discovery = await fetch(base+'/.well-known/oauth-authorization-server');
     assert.equal(discovery.status,404, 'must not advertise nonexistent OAuth');
+    for(const route of ['/api/secure-mcp','/api/private/test-state','/.well-known/oauth-protected-resource']) {
+      const response=await fetch(base+route);
+      assert.equal(response.status,503,'unconfigured secure routes must fail closed: '+route);
+    }
+    const loginPage=await (await fetch(base+'/login')).text();
+    assert.match(loginPage,/Private test setup is pending/);
   } finally {
     if (server.exitCode === null && server.signalCode === null) {
       const exited = new Promise(resolve=>server.once('exit',resolve));
