@@ -18,10 +18,12 @@
 
 ## Verification and release boundary
 
-Run `npm ci`, `npm run build`, `npm run typecheck`, `npm test`, `npx playwright install chromium`, and `npm run test:mobile`.
+Run `npm ci`, `npm run build`, `npm run typecheck`, `npm test`, `npx playwright install chromium webkit`, and `npm run test:mobile`.
 
 Browser tests use synthetic in-memory data and intercepted requests only. They exercise 320, 375, 390 and 430px widths through the compatibility bridge, a parent-iframe standard MCP bridge and the website endpoint. They check completion, approval placement, creation, archive/restore, JavaScript errors and horizontal overflow. Additional tests cover initial and delayed host data and cancellation. Existing database tests use local PGlite, including membership, revision conflicts and idempotency.
 
-These checks are Chromium viewport simulations, not physical iPhone Safari or a live ChatGPT host. Hosted OAuth, host-controlled approval prompts, cached resource delivery, keyboard/safe-area behavior on an actual iPhone, and the revised UI in ChatGPT remain release gates. Do not ask the user to acceptance-test until an isolated preview connection has passed these checks. Do not merge to the production branch as a substitute for this verification.
+These checks are Chromium and WebKit viewport simulations, not physical iPhone Safari or a live ChatGPT host. Hosted OAuth, host-controlled approval prompts, cached resource delivery, keyboard/safe-area behavior on an actual iPhone, and the revised UI in ChatGPT remain release gates. Do not ask the user to acceptance-test until an isolated preview connection has passed these checks. Do not merge to the production branch as a substitute for this verification.
 
 References: https://developers.openai.com/plugins/build/chatgpt-ui and https://developers.openai.com/plugins/reference (initial tool output, delayed globals, bridge calls and height notifications).
+
+WebKit follow-up: all 15 browser tests also pass with touch enabled using WebKit 27.2. This is Safari-engine coverage, not a physical iPhone or a live ChatGPT-host pass. CI installs and runs both engines.
