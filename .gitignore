@@ -5,3 +5,5 @@ node_modules/
 !.env.example
 *.tsbuildinfo
 imports/
+test-results/
+playwright-report/
